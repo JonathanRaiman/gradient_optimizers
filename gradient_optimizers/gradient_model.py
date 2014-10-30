@@ -1,5 +1,5 @@
-from utils.nnet_named import NamedGradientStatus
-from utils.nnet import symbolic_variable_for_dimension
+from .utils.nnet_named import NamedGradientStatus
+from .utils.nnet import symbolic_variable_for_dimension
 from numpy import array
 import theano, theano.tensor as T, numpy as np
 from collections import OrderedDict

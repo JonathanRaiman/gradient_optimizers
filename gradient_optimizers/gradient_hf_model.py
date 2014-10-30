@@ -1,6 +1,6 @@
 import numpy as np, theano, theano.tensor as T, time
 from numpy import zeros_like, ones_like
-from utils.nnet import batch_repeat, multi_grad, theano_unique
+from .utils.nnet import batch_repeat, multi_grad, theano_unique
 from collections import OrderedDict
 
 class GradientHFModel(object):

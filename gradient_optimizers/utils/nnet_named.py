@@ -1,4 +1,4 @@
-from utils.nnet import GradientStatus
+from .nnet import GradientStatus
 
 class NamedGradientStatus(GradientStatus):
 

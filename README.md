@@ -1,9 +1,18 @@
-Two classes GradientModel, and GradientHFModel, for optimizing gradient
+# Gradient Optimizers
+
+Optimize you Theano Models with [Adagrad](http://www.magicbroom.info/Papers/DuchiHaSi10.pdf), Hessian Free optimization, or linear updates.
+
+
+    pip3 install gradient-optimizers
+
+
+See example notebook (TBD) for tutorial.
+
+Two classes **GradientModel**, and **GradientHFModel**, for optimizing gradient
 based models (specifically built with indexed parameters in mind (e.g.
 for language models))
 
-GradientModel
--------------
+## GradientModel
 
 A gradient model for updating your model with
 hessian free, adagrad, or linear decay updates.
@@ -33,8 +42,7 @@ The update methods expect the input to be of the form:
 
 If this is not the case you can modify them as appropriate.
 
-GradientHFModel
----------------
+## GradientHFModel
 
 Implements an symbolic one step of hessian-free [1]
 optimization that approximates the curvature,
@@ -45,7 +53,7 @@ gradients for each example provided.
 Model should have a params property containing symbolic
 theano variables.
 
-[1] James Martens, ``Deep learning via Hessian-free optimization", ICML 2010
+[[1] James Martens, ``Deep learning via Hessian-free optimization", ICML 2010](http://www.icml2010.org/papers/458.pdf)
 
 Make sure the following parameters are not tampered with:
 

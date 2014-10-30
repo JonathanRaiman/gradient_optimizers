@@ -18,26 +18,26 @@ class GradientModel(object):
 	and fill them as appropriate:
 
 		self.params = []
-    	self.indexed_params = set()
+		self.indexed_params = set()
 
-    	self._l2_regularization = True / False
+		self._l2_regularization = True / False
 
-    	# if L2 is true store this parameter:
-        self._l2_regularization_parameter = theano.shared(np.float64(l2_regularization).astype(REAL), name='l2_regularization_parameter')
+		# if L2 is true store this parameter:
+		self._l2_regularization_parameter = theano.shared(np.float64(l2_regularization).astype(REAL), name='l2_regularization_parameter')
 
-    Upon initialization you must run:
+	Upon initialization you must run:
 
-    	self._select_update_mechanism(update_method_name)
+		self._select_update_mechanism(update_method_name)
 
-    	# then to compile this mechanism:
-    	self.create_update_fun()
+		# then to compile this mechanism:
+		self.create_update_fun()
 
 
-    The update methods expect the input to be of the form:
+	The update methods expect the input to be of the form:
 
-    	ivector <indices>, ivector <labels>
+		ivector <indices>, ivector <labels>
 
-    If this is not the case you can modify them as appropriate.
+	If this is not the case you can modify them as appropriate.
 
 	"""
 
@@ -263,6 +263,65 @@ class GradientModel(object):
 			i+=1
 
 		self.update_fun      = theano.function([indices, label], cost, updates = updates, mode = self.theano_mode)
+
+	def _create_clipped_adagrad_update_mechanism(self):
+
+		if self.store_max_updates:
+			self.max_update_size = theano.shared(np.zeros(len(self.params), dtype=REAL), 'max_update_size')
+		self._additional_params = {}
+
+		for param in self.params:
+			self._additional_params[param] = theano.shared(np.ones_like(param.get_value(borrow=True)), name="%s_statistic" % (param.name))
+
+		self.clip_range      = theano.shared(np.float32(10))
+		indices              = T.ivector('indices')
+		label                = T.ivector('labels')
+		
+		class_projection     = self.projection_function(indices)
+		
+		cost                 = self.cost_function(class_projection, label).sum()
+
+		if self._l2_regularization:
+			cost += self.l2_regularization(indices)
+		
+		gparams              = T.grad(cost, self.params, disconnected_inputs = self.disconnected_inputs )
+		updates              = OrderedDict()
+		reset_updates        = OrderedDict()
+		
+		i = 0
+		if self.store_max_updates:
+			updates[self.max_update_size] = self.max_update_size
+
+		for param, gparam in zip(self.params, gparams):
+
+			if self._skip_update_param(param):
+				continue
+
+			if param in self.indexed_params:
+				# the statistic gets increased by the squared gradient:
+				updates[self._additional_params[param]] = T.inc_subtensor(self._additional_params[param][indices], gparam[indices] ** 2)
+				reset_updates[self._additional_params[param]] = T.ones_like(self._additional_params[param])
+
+				if self.store_max_updates:
+					updates[self.max_update_size] = T.set_subtensor(updates[self.max_update_size][i], T.maximum(self.max_update_size[i], gparam[indices].max()))
+				gparam = T.clip(gparam[indices], -self.clip_range, self.clip_range)
+				# this normalizes the learning rate:
+				updates[param] = T.inc_subtensor(param[indices], - (self.learning_rate / T.sqrt(updates[self._additional_params[param]][indices])) * gparam)
+			else:
+				# the statistic gets increased by the squared gradient:
+				updates[self._additional_params[param]] = self._additional_params[param] + (gparam ** 2)
+				reset_updates[self._additional_params[param]] = T.ones_like(self._additional_params[param])
+
+				if self.store_max_updates:
+					updates[self.max_update_size] = T.set_subtensor(updates[self.max_update_size][i], T.maximum(self.max_update_size[i], gparam.max()))
+				gparam = T.clip(gparam, -self.clip_range, self.clip_range)
+				# this normalizes the learning rate:
+				updates[param] = param - (self.learning_rate / T.sqrt(updates[self._additional_params[param]])) * gparam
+
+			i+=1
+
+		self.update_fun      = theano.function([indices, label], cost, updates = updates, mode = self.theano_mode)
+		self.reset_adagrad   = theano.function([], updates = reset_updates, mode = self.theano_mode)
 
 
 	def _create_exterior_update_mechanism(self):
